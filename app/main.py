@@ -1,7 +1,8 @@
 from fastapi import FastAPI
+from app.routes import root, auth
 
 app = FastAPI()
 
-@app.get("/")
-def read_root():
-    return {"message": "SpendWise backend is running!"}
+# Register routers
+app.include_router(root.router)
+app.include_router(auth.router, prefix="/auth")
