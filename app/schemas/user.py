@@ -13,10 +13,33 @@ class UserCreate(BaseModel):
         if not any(char.isalpha() for char in v):
             raise ValueError("Username must contain at least one letter.")
         return v
+    
+    @field_validator("password")
+    @classmethod
+    def password_must_contain_letter(cls, v: str) -> str:
+        if not any(char.isalpha() for char in v):
+            raise ValueError("Password must contain at least one letter.")
+        
+        # Password must contain at least one number and one special character
+        if not any(char.isdigit() for char in v):
+            raise ValueError("Password must contain at least one number.")
+        if not any(char in "!@#$%^&*()_+-=[]{}|;:,.<>?" for char in v):
+            raise ValueError("Password must contain at least one special character.")
+        return v
+    
+    @field_validator("name")
+    @classmethod
+    def name_must_contain_letter(cls, v: str) -> str:
+        if not any(char.isalpha() for char in v):
+            raise ValueError("Name must contain at least one letter.")
+        
+        # Check that name only contains letters, spaces, and hyphens
+        if not all(char.isalpha() or char == ' ' or char == '-' for char in v):
+            raise ValueError("Name must only contain letters, spaces, and hyphens.")
+        return v
 
 
 class UserOut(BaseModel):
-    id: UUID
     username: str
     name: str
     created_at: datetime
