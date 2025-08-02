@@ -9,7 +9,7 @@ from app.crud import user as crud_user
 from app.core.security import verify_password, create_access_token
 from fastapi.security import OAuth2PasswordRequestForm
 
-router = APIRouter()
+router = APIRouter(prefix="/auth", tags=["Auth"])
 
 @router.post("/register", response_model=UserOut, status_code=status.HTTP_201_CREATED)
 def register_user(user_in: UserCreate, db: Session = Depends(get_db)):

@@ -6,5 +6,5 @@ app = FastAPI()
 
 # Register routers
 app.include_router(root.router)
-app.include_router(auth.router, prefix="/auth")
+app.include_router(auth.router)
 app.include_router(transactions.router)

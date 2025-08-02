@@ -3,19 +3,30 @@ from alembic import context
 
 import os
 import sys
+from dotenv import load_dotenv
 
 from sqlalchemy import pool
 
 # Add project root to Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
+# Load environment variables
+load_dotenv()
+
 # Import your engine and Base
 from app.db.db import engine
 from app.models import Base
 import app.models.user  # Make sure all models are imported
+import app.models.transaction  # Import transaction model
+import app.models.budget  # Import budget model  
+import app.models.insight  # Import insight model
 
 # Alembic Config object
 config = context.config
+
+# Override the sqlalchemy.url with the one from environment variables
+if os.getenv("DATABASE_URL"):
+    config.set_main_option("sqlalchemy.url", os.getenv("DATABASE_URL"))
 
 # Set up loggers
 if config.config_file_name is not None:

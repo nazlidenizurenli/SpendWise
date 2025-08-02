@@ -7,7 +7,7 @@ class TransactionBase(BaseModel):
     amount: float
     description: str
     category: Optional[str]
-    type: Literal["income", "expense"]
+    transaction_type: Literal["income", "expense"]
     source: Literal["credit", "debit", "savings"]
     timestamp: Optional[datetime] = None
 
@@ -30,13 +30,13 @@ class TransactionBase(BaseModel):
         if self.source == "credit":
             if self.amount < 0:
                 raise ValueError("Credit transactions must have a positive amount.")
-            if self.type != "expense":
+            if self.transaction_type != "expense":
                 raise ValueError("Credit transactions must be type 'expense'.")
 
         elif self.source in {"debit", "savings"}:
-            if self.amount > 0 and self.type != "income":
+            if self.amount > 0 and self.transaction_type != "income":
                 raise ValueError("Positive amounts from debit/savings must be income.")
-            if self.amount < 0 and self.type != "expense":
+            if self.amount < 0 and self.transaction_type != "expense":
                 raise ValueError("Negative amounts from debit/savings must be expense.")
 
         return self
