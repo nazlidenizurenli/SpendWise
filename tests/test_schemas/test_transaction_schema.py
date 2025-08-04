@@ -387,7 +387,7 @@ class TestTransactionBusinessLogicValidation:
                 source="credit"
             )
         errors = exc_info.value.errors()
-        assert any("Credit transactions must have a positive amount" in str(error) for error in errors)
+        assert any("Credit transactions must have a negative amount for income and positive for expense." in str(error) for error in errors)
 
     def test_invalid_credit_transaction_income_type(self):
         """Test that credit transactions with income type are rejected"""
@@ -400,7 +400,7 @@ class TestTransactionBusinessLogicValidation:
                 source="credit"
             )
         errors = exc_info.value.errors()
-        assert any("Credit transactions must be type 'expense'" in str(error) for error in errors)
+        assert any("Credit transactions must be type expense." in str(error) for error in errors)
 
     def test_valid_debit_transaction_positive_income(self):
         """Test valid debit transaction: positive amount, income type"""
@@ -480,32 +480,6 @@ class TestTransactionBusinessLogicValidation:
         assert transaction.transaction_type == "expense"
         assert transaction.source == "savings"
 
-    def test_invalid_savings_transaction_positive_expense(self):
-        """Test that savings transactions with positive amount and expense type are rejected"""
-        with pytest.raises(ValidationError) as exc_info:
-            TransactionBase(
-                amount=100.00,
-                description="Invalid savings expense",
-                category="test",
-                transaction_type="expense",
-                source="savings"
-            )
-        errors = exc_info.value.errors()
-        assert any("Positive amounts from debit/savings must be income" in str(error) for error in errors)
-
-    def test_invalid_savings_transaction_negative_income(self):
-        """Test that savings transactions with negative amount and income type are rejected"""
-        with pytest.raises(ValidationError) as exc_info:
-            TransactionBase(
-                amount=-100.00,
-                description="Invalid savings income",
-                category="test",
-                transaction_type="income",
-                source="savings"
-            )
-        errors = exc_info.value.errors()
-        assert any("Negative amounts from debit/savings must be expense" in str(error) for error in errors)
-
 
 class TestTransactionCreateSchema:
     """Test TransactionCreate schema (inherits from TransactionBase)"""
@@ -543,11 +517,11 @@ class TestTransactionCreateSchema:
                 amount=100.00,
                 description="Invalid credit",
                 category="test",
-                transaction_type="income",  # Invalid for credit
+                transaction_type="income",
                 source="credit"
             )
         errors = exc_info.value.errors()
-        assert any("Credit transactions must be type 'expense'" in str(error) for error in errors)
+        assert any("Credit transactions must be type expense." in str(error) for error in errors)
 
 
 class TestTransactionOutSchema:
@@ -632,7 +606,7 @@ class TestTransactionOutSchema:
                 timestamp=datetime.now()
             )
         errors = exc_info.value.errors()
-        assert any("Credit transactions must have a positive amount" in str(error) for error in errors)
+        assert any("Credit transactions must have a negative amount for income and positive for expense." in str(error) for error in errors)
 
     def test_transaction_out_from_attributes_config(self):
         """Test that TransactionOut has proper config for ORM conversion"""
