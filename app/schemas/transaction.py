@@ -28,12 +28,14 @@ class TransactionBase(BaseModel):
     @model_validator(mode="after")
     def validate_transaction_logic(self) -> "TransactionBase":
         if self.source == "credit":
-            if self.amount < 0:
-                raise ValueError("Credit transactions must have a positive amount.")
-            if self.transaction_type != "expense":
-                raise ValueError("Credit transactions must be type 'expense'.")
+            if self.amount < 0 and self.transaction_type != "income":
+                raise ValueError("Credit transactions must have a negative amount for income and positive for expense.")
+            if self.amount > 0 and self.transaction_type != "expense":
+                raise ValueError("Credit transactions must be type expense.")
+            if self.amount == 0:
+                raise ValueError("Credit transactions must have a non-zero amount.")
 
-        elif self.source in {"debit", "savings"}:
+        if self.source == "debit":
             if self.amount > 0 and self.transaction_type != "income":
                 raise ValueError("Positive amounts from debit/savings must be income.")
             if self.amount < 0 and self.transaction_type != "expense":

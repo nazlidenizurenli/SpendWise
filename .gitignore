@@ -1,1 +1,14 @@
 sw_venv/
+
+# Python cache files
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyc
+*.pyo
+*.pyd
+
+# Python distribution / packaging
+*.egg-info/
+dist/
+build/
