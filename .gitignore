@@ -4,7 +4,15 @@ sw_venv/
 # Python
 __pycache__/
 *.py[cod]
+*$py.class
 *.pyc
+*.pyo
+*.pyd
+
+# Python distribution / packaging
+*.egg-info/
+dist/
+build/
 
 # Environment variables
 .env
