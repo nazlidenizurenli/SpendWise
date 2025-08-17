@@ -1,1 +1,18 @@
+# Virtual Environment
 sw_venv/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyc
+
+# Environment variables
+.env
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
