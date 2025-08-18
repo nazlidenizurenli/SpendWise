@@ -7,6 +7,7 @@ class TransactionBase(BaseModel):
     amount: float
     description: str
     category: Optional[str]
+    merchant: Optional[str] = None
     transaction_type: Literal["income", "expense"]
     source: Literal["credit", "debit", "savings"]
     timestamp: Optional[datetime] = None
@@ -27,19 +28,17 @@ class TransactionBase(BaseModel):
 
     @model_validator(mode="after")
     def validate_transaction_logic(self) -> "TransactionBase":
-        if self.source == "credit":
-            if self.amount < 0 and self.transaction_type != "income":
-                raise ValueError("Credit transactions must have a negative amount for income and positive for expense.")
-            if self.amount > 0 and self.transaction_type != "expense":
-                raise ValueError("Credit transactions must be type expense.")
-            if self.amount == 0:
-                raise ValueError("Credit transactions must have a non-zero amount.")
-
-        if self.source == "debit":
-            if self.amount > 0 and self.transaction_type != "income":
-                raise ValueError("Positive amounts from debit/savings must be income.")
-            if self.amount < 0 and self.transaction_type != "expense":
-                raise ValueError("Negative amounts from debit/savings must be expense.")
+        """
+        Validate transaction logic - all amounts must be non-negative.
+        Transaction type and source are determined during extraction.
+        """
+        # All amounts must be non-negative
+        if self.amount < 0:
+            raise ValueError("All transaction amounts must be non-negative (>= 0).")
+        
+        # Amount must be greater than 0 (already validated by amount_must_not_be_zero)
+        if self.amount == 0:
+            raise ValueError("Transaction amount must be greater than 0.")
 
         return self
 

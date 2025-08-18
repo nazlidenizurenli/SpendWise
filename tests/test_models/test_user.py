@@ -29,8 +29,6 @@ def test_create_user(db_session):
     assert user.transactions == []
     assert isinstance(user.budgets, list)
     assert user.budgets == []
-    assert isinstance(user.insights, list)
-    assert user.insights == []
 
 def test_user_unique_username_constraint(db_session):
     """Test that username uniqueness constraint works"""
@@ -61,7 +59,6 @@ def test_user_relationships_with_related_objects(db_session):
     """Test user relationships when related objects exist"""
     from app.models.transaction import TransactionModel
     from app.models.budget import BudgetModel
-    from app.models.insight import InsightModel
     
     # Create user
     user = User(
@@ -79,6 +76,7 @@ def test_user_relationships_with_related_objects(db_session):
         user_id=user.id,
         amount=100.0,
         description="Test Transaction",
+        merchant="Test Merchant",
         category="Food",
         transaction_type="expense",
         source="debit",
@@ -88,7 +86,7 @@ def test_user_relationships_with_related_objects(db_session):
     budget = BudgetModel(
         id=uuid.uuid4(),
         user_id=user.id,
-        amount=500.0,
+        limit=500.0,
         category="Food",
         description="Monthly food budget",
         start_date=datetime.now(),
@@ -96,13 +94,7 @@ def test_user_relationships_with_related_objects(db_session):
         is_active=True
     )
     
-    insight = InsightModel(
-        id=uuid.uuid4(),
-        user_id=user.id,
-        insight="You spend too much on food"
-    )
-    
-    db_session.add_all([transaction, budget, insight])
+    db_session.add_all([transaction, budget])
     db_session.commit()
     db_session.refresh(user)
 
@@ -111,14 +103,11 @@ def test_user_relationships_with_related_objects(db_session):
     assert user.transactions[0].id == transaction.id
     assert len(user.budgets) == 1
     assert user.budgets[0].id == budget.id
-    assert len(user.insights) == 1
-    assert user.insights[0].id == insight.id
 
 def test_user_cascade_delete(db_session):
     """Test that deleting user cascades to related objects"""
     from app.models.transaction import TransactionModel
     from app.models.budget import BudgetModel
-    from app.models.insight import InsightModel
     
     # Create user with related objects
     user = User(
@@ -135,6 +124,7 @@ def test_user_cascade_delete(db_session):
         user_id=user.id,
         amount=100.0,
         description="Test Transaction",
+        merchant="Test Merchant",
         category="Food",
         transaction_type="expense",
         source="debit",
@@ -144,7 +134,7 @@ def test_user_cascade_delete(db_session):
     budget = BudgetModel(
         id=uuid.uuid4(),
         user_id=user.id,
-        amount=500.0,
+        limit=500.0,
         category="Food",
         description="Monthly food budget",
         start_date=datetime.now(),
@@ -152,19 +142,12 @@ def test_user_cascade_delete(db_session):
         is_active=True
     )
     
-    insight = InsightModel(
-        id=uuid.uuid4(),
-        user_id=user.id,
-        insight="Test insight"
-    )
-    
-    db_session.add_all([transaction, budget, insight])
+    db_session.add_all([transaction, budget])
     db_session.commit()
 
     # Verify objects exist
     assert db_session.query(TransactionModel).count() == 1
     assert db_session.query(BudgetModel).count() == 1
-    assert db_session.query(InsightModel).count() == 1
 
     # Delete user
     db_session.delete(user)
@@ -173,7 +156,6 @@ def test_user_cascade_delete(db_session):
     # Verify related objects are deleted
     assert db_session.query(TransactionModel).count() == 0
     assert db_session.query(BudgetModel).count() == 0
-    assert db_session.query(InsightModel).count() == 0
 
 def test_user_required_fields(db_session):
     """Test that required fields cannot be null"""

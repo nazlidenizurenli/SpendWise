@@ -19,7 +19,8 @@ from app.models import Base
 import app.models.user  # Make sure all models are imported
 import app.models.transaction  # Import transaction model
 import app.models.budget  # Import budget model  
-import app.models.insight  # Import insight model
+
+
 
 # Alembic Config object
 config = context.config

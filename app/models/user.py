@@ -20,4 +20,4 @@ class User(Base):
     # Relationships
     transactions = relationship("TransactionModel", back_populates="user", cascade="all, delete-orphan")
     budgets = relationship("BudgetModel", back_populates="user", cascade="all, delete-orphan")
-    insights = relationship("InsightModel", back_populates="user", cascade="all, delete-orphan")
+

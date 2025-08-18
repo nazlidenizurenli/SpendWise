@@ -19,5 +19,7 @@ class TransactionModel(Base):
     source = Column(String, nullable=False) # Is this the same as category?
     timestamp = Column(DateTime, nullable=False)
 
+    merchant = Column(String, nullable=True, index=True)
+
     # Relationships
     user = relationship("User", back_populates="transactions")

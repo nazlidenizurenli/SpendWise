@@ -39,16 +39,17 @@ class TestTransactionBaseSchema:
         assert transaction.transaction_type == "expense"
         assert transaction.source == "credit"
 
-    def test_valid_transaction_creation_expense_debit_negative(self):
-        """Test creating a valid expense transaction from debit with negative amount"""
+    def test_valid_transaction_creation_expense_debit_positive(self):
+        """Test creating a valid expense transaction from debit with positive amount"""
         transaction = TransactionBase(
-            amount=-75.00,
+            amount=75.00,
             description="ATM withdrawal",
+            merchant="ATM",
             category="cash",
             transaction_type="expense",
             source="debit"
         )
-        assert transaction.amount == -75.00
+        assert transaction.amount == 75.00
         assert transaction.description == "ATM withdrawal"
         assert transaction.transaction_type == "expense"
         assert transaction.source == "debit"
@@ -133,15 +134,17 @@ class TestTransactionAmountValidation:
         assert transaction.amount == 0.01
 
     def test_valid_amount_negative(self):
-        """Test that negative amounts are accepted"""
-        transaction = TransactionBase(
-            amount=-0.01,  # Minimum negative amount
-            description="Test transaction",
-            category="test",
-            transaction_type="expense",
-            source="debit"
-        )
-        assert transaction.amount == -0.01
+        """Test that negative amounts are rejected (now using non-negative system)"""
+        with pytest.raises(ValidationError) as exc_info:
+            TransactionBase(
+                amount=-0.01,  # Negative amount should be rejected
+                description="Test transaction",
+                category="test",
+                transaction_type="expense",
+                source="debit"
+            )
+        errors = exc_info.value.errors()
+        assert any("All transaction amounts must be non-negative" in str(error) for error in errors)
 
     def test_valid_amount_large_positive(self):
         """Test that large positive amounts are accepted"""
@@ -155,15 +158,17 @@ class TestTransactionAmountValidation:
         assert transaction.amount == 999999.99
 
     def test_valid_amount_large_negative(self):
-        """Test that large negative amounts are accepted"""
-        transaction = TransactionBase(
-            amount=-999999.99,
-            description="Large expense",
-            category="test",
-            transaction_type="expense",
-            source="debit"
-        )
-        assert transaction.amount == -999999.99
+        """Test that large negative amounts are rejected (now using non-negative system)"""
+        with pytest.raises(ValidationError) as exc_info:
+            TransactionBase(
+                amount=-999999.99,
+                description="Large expense",
+                category="test",
+                transaction_type="expense",
+                source="debit"
+            )
+        errors = exc_info.value.errors()
+        assert any("All transaction amounts must be non-negative" in str(error) for error in errors)
 
 
 class TestTransactionDescriptionValidation:
@@ -377,7 +382,7 @@ class TestTransactionBusinessLogicValidation:
         assert transaction.source == "credit"
 
     def test_invalid_credit_transaction_negative_amount(self):
-        """Test that credit transactions with negative amounts are rejected"""
+        """Test that credit transactions with negative amounts are rejected (non-negative system)"""
         with pytest.raises(ValidationError) as exc_info:
             TransactionBase(
                 amount=-100.00,
@@ -387,20 +392,21 @@ class TestTransactionBusinessLogicValidation:
                 source="credit"
             )
         errors = exc_info.value.errors()
-        assert any("Credit transactions must have a negative amount for income and positive for expense." in str(error) for error in errors)
+        assert any("All transaction amounts must be non-negative" in str(error) for error in errors)
 
     def test_invalid_credit_transaction_income_type(self):
-        """Test that credit transactions with income type are rejected"""
-        with pytest.raises(ValidationError) as exc_info:
-            TransactionBase(
-                amount=100.00,
-                description="Invalid credit income",
-                category="test",
-                transaction_type="income",
-                source="credit"
-            )
-        errors = exc_info.value.errors()
-        assert any("Credit transactions must be type expense." in str(error) for error in errors)
+        """Test that credit transactions with income type are now valid (non-negative system)"""
+        # In the new system, credit transactions can be income or expense
+        transaction = TransactionBase(
+            amount=100.00,
+            description="Credit card payment",
+            category="test",
+            transaction_type="income",
+            source="credit"
+        )
+        assert transaction.amount == 100.00
+        assert transaction.transaction_type == "income"
+        assert transaction.source == "credit"
 
     def test_valid_debit_transaction_positive_income(self):
         """Test valid debit transaction: positive amount, income type"""
@@ -416,33 +422,34 @@ class TestTransactionBusinessLogicValidation:
         assert transaction.source == "debit"
 
     def test_valid_debit_transaction_negative_expense(self):
-        """Test valid debit transaction: negative amount, expense type"""
+        """Test valid debit transaction: positive amount, expense type (non-negative system)"""
         transaction = TransactionBase(
-            amount=-50.00,
+            amount=50.00,
             description="ATM withdrawal",
             category="cash",
             transaction_type="expense",
             source="debit"
         )
-        assert transaction.amount == -50.00
+        assert transaction.amount == 50.00
         assert transaction.transaction_type == "expense"
         assert transaction.source == "debit"
 
     def test_invalid_debit_transaction_positive_expense(self):
-        """Test that debit transactions with positive amount and expense type are rejected"""
-        with pytest.raises(ValidationError) as exc_info:
-            TransactionBase(
-                amount=100.00,
-                description="Invalid debit expense",
-                category="test",
-                transaction_type="expense",
-                source="debit"
-            )
-        errors = exc_info.value.errors()
-        assert any("Positive amounts from debit/savings must be income" in str(error) for error in errors)
+        """Test that debit transactions with positive amount and expense type are now valid (non-negative system)"""
+        # In the new system, all amounts are positive, so this should be valid
+        transaction = TransactionBase(
+            amount=100.00,
+            description="Valid debit expense",
+            category="test",
+            transaction_type="expense",
+            source="debit"
+        )
+        assert transaction.amount == 100.00
+        assert transaction.transaction_type == "expense"
+        assert transaction.source == "debit"
 
     def test_invalid_debit_transaction_negative_income(self):
-        """Test that debit transactions with negative amount and income type are rejected"""
+        """Test that debit transactions with negative amount and income type are rejected (non-negative system)"""
         with pytest.raises(ValidationError) as exc_info:
             TransactionBase(
                 amount=-100.00,
@@ -452,7 +459,7 @@ class TestTransactionBusinessLogicValidation:
                 source="debit"
             )
         errors = exc_info.value.errors()
-        assert any("Negative amounts from debit/savings must be expense" in str(error) for error in errors)
+        assert any("All transaction amounts must be non-negative" in str(error) for error in errors)
 
     def test_valid_savings_transaction_positive_income(self):
         """Test valid savings transaction: positive amount, income type"""
@@ -468,15 +475,15 @@ class TestTransactionBusinessLogicValidation:
         assert transaction.source == "savings"
 
     def test_valid_savings_transaction_negative_expense(self):
-        """Test valid savings transaction: negative amount, expense type"""
+        """Test valid savings transaction: positive amount, expense type (non-negative system)"""
         transaction = TransactionBase(
-            amount=-200.00,
+            amount=200.00,
             description="Savings withdrawal",
             category="withdrawal",
             transaction_type="expense",
             source="savings"
         )
-        assert transaction.amount == -200.00
+        assert transaction.amount == 200.00
         assert transaction.transaction_type == "expense"
         assert transaction.source == "savings"
 
@@ -511,17 +518,17 @@ class TestTransactionCreateSchema:
 
     def test_transaction_create_business_logic_validation(self):
         """Test that TransactionCreate applies business logic validation"""
-        # Test invalid credit transaction
+        # Test invalid negative amount (non-negative system)
         with pytest.raises(ValidationError) as exc_info:
             TransactionCreate(
-                amount=100.00,
-                description="Invalid credit",
+                amount=-100.00,
+                description="Invalid negative amount",
                 category="test",
-                transaction_type="income",
+                transaction_type="expense",
                 source="credit"
             )
         errors = exc_info.value.errors()
-        assert any("Credit transactions must be type expense." in str(error) for error in errors)
+        assert any("All transaction amounts must be non-negative" in str(error) for error in errors)
 
 
 class TestTransactionOutSchema:
@@ -598,7 +605,7 @@ class TestTransactionOutSchema:
             TransactionOut(
                 id=uuid4(),
                 user_id=uuid4(),
-                amount=-100.00,  # Invalid for credit
+                amount=-100.00,  # Invalid negative amount (non-negative system)
                 description="Test transaction",
                 category="test",
                 transaction_type="expense",
@@ -606,7 +613,7 @@ class TestTransactionOutSchema:
                 timestamp=datetime.now()
             )
         errors = exc_info.value.errors()
-        assert any("Credit transactions must have a negative amount for income and positive for expense." in str(error) for error in errors)
+        assert any("All transaction amounts must be non-negative" in str(error) for error in errors)
 
     def test_transaction_out_from_attributes_config(self):
         """Test that TransactionOut has proper config for ORM conversion"""
@@ -618,7 +625,7 @@ class TestTransactionEdgeCases:
     """Test edge cases and boundary conditions"""
     
     def test_transaction_with_very_small_amounts(self):
-        """Test transactions with very small amounts"""
+        """Test transactions with very small amounts (non-negative system)"""
         # Test very small positive amount
         transaction = TransactionBase(
             amount=0.001,
@@ -629,24 +636,26 @@ class TestTransactionEdgeCases:
         )
         assert transaction.amount == 0.001
 
-        # Test very small negative amount
-        transaction = TransactionBase(
-            amount=-0.001,
-            description="Very small expense",
-            category="test",
-            transaction_type="expense",
-            source="debit"
-        )
-        assert transaction.amount == -0.001
+        # Test very small negative amount (should be rejected)
+        with pytest.raises(ValidationError) as exc_info:
+            TransactionBase(
+                amount=-0.001,
+                description="Very small expense",
+                category="test",
+                transaction_type="expense",
+                source="debit"
+            )
+        errors = exc_info.value.errors()
+        assert any("All transaction amounts must be non-negative" in str(error) for error in errors)
 
     def test_transaction_with_decimal_precision(self):
-        """Test transactions with various decimal precisions"""
+        """Test transactions with various decimal precisions (non-negative system)"""
         amounts = [
             123.456789,
             0.123456789,
-            -99.999999,
+            99.999999,
             1000000.01,
-            -1000000.99
+            1000000.99
         ]
         
         for amount in amounts:
@@ -720,7 +729,7 @@ class TestTransactionEdgeCases:
                 "source": "credit"
             },
             {
-                "amount": -150.00,
+                "amount": 150.00,
                 "description": "ATM cash withdrawal",
                 "category": "cash",
                 "transaction_type": "expense",
@@ -734,7 +743,7 @@ class TestTransactionEdgeCases:
                 "source": "savings"
             },
             {
-                "amount": -1000.00,
+                "amount": 1000.00,
                 "description": "Investment withdrawal",
                 "category": "investment",
                 "transaction_type": "expense",

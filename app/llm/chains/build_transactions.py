@@ -1,101 +1,112 @@
 """
-Stage 2: Convert cleaned transaction text into structured transaction objects
+Optimized Single-Stage: Direct transaction extraction from cleaned text
 """
 
 import json
 import re
+import time
+import click
 from typing import List, Dict
 from app.llm.llm_config import get_extraction_llm
-from app.llm.prompts.deliver_transactions import deliver_transactions_prompt
+from app.llm.prompts.build_transactions import build_transactions_prompt
 
-def split_transaction_blocks(text: str, max_transactions_per_chunk: int = 25) -> list:
+# Global constants for chunking
+MAX_OUTPUT_TOKENS = 4096
+MAX_TRANSACTIONS_PER_CHUNK = 20
+
+
+def create_transaction_chunks(text: str, max_transactions_per_chunk: int = MAX_TRANSACTIONS_PER_CHUNK) -> List[str]:
     """
-    Split transaction blocks into chunks for processing
+    Create chunks of transactions for processing
     
     Args:
-        text: Transaction blocks text from Stage 1
+        text: Clean text from Stage 0
         max_transactions_per_chunk: Maximum transactions per chunk
         
     Returns:
-        List of text chunks containing transaction blocks
+        List of text chunks, each with header + transactions
     """
-    # Split by TRANSACTION_START to get individual transactions
-    transactions = text.split('TRANSACTION_START')
+    lines = text.split('\n')
+    header = lines[:2]  # ACCOUNT_TYPE and empty line
+    transaction_lines = lines[2:]  # All remaining lines are transactions
     
-    # Remove empty first element and re-add TRANSACTION_START to each
-    transaction_blocks = []
-    for i, tx in enumerate(transactions):
-        if i == 0 and not tx.strip():
-            continue
-        
-        # Re-add TRANSACTION_START prefix
-        if i > 0:
-            tx = 'TRANSACTION_START' + tx
-        transaction_blocks.append(tx.strip())
-    
-    # Group transactions into chunks
     chunks = []
-    current_chunk = []
+    for i in range(0, len(transaction_lines), max_transactions_per_chunk):
+        chunk_transactions = transaction_lines[i:i + max_transactions_per_chunk]
+        chunk_text = '\n'.join(header + chunk_transactions)
+        chunks.append(chunk_text)
     
-    for tx_block in transaction_blocks:
-        current_chunk.append(tx_block)
-        
-        if len(current_chunk) >= max_transactions_per_chunk:
-            chunks.append('\n\n'.join(current_chunk))
-            current_chunk = []
-    
-    # Add remaining transactions
-    if current_chunk:
-        chunks.append('\n\n'.join(current_chunk))
-    
-    return [chunk for chunk in chunks if chunk.strip()]
+    return chunks
 
-def run_chain_lines_to_transactions(cleaned_text: str, model_provider: str = None) -> List[Dict]:
+
+def run_optimized_transaction_extraction(cleaned_text: str, model_provider: str = None) -> List[Dict]:
     """
-    Stage 2: Extract structured transactions from cleaned text
+    Optimized single-stage transaction extraction
     
     Args:
-        cleaned_text: Clean transaction blocks from Stage 1
+        cleaned_text: Clean text from Stage 0
         model_provider: "openai" or "anthropic" (defaults to env LLM_PROVIDER)
         
     Returns:
         List of transaction dictionaries
     """
     try:
+        click.echo(click.style("  🔧 Initializing Optimized Transaction Extraction...", fg="blue"))
+        start_time = time.time()
+        
+        # Count total transactions
+        total_transactions = len(cleaned_text.split('\n')) - 2
+        click.echo(click.style(f"  📊 Total transactions detected: {total_transactions}", fg="blue"))
+        
         # Get LLM instance optimized for extraction
         llm = get_extraction_llm(provider=model_provider)
         
-        # Create chain: Prompt → LLM  
-        chain = deliver_transactions_prompt | llm
+        # Create chain: Prompt → LLM
+        chain = build_transactions_prompt | llm
         
-        # Split into chunks to handle large inputs
-        chunks = split_transaction_blocks(cleaned_text, max_transactions_per_chunk=25)
-        print(f"Stage 2: Processing {len(chunks)} chunks")
-        
+        # Create transaction chunks
+        chunks = create_transaction_chunks(cleaned_text, MAX_TRANSACTIONS_PER_CHUNK)
+        click.echo(click.style(f"  📦 Split into {len(chunks)} chunks (max {MAX_TRANSACTIONS_PER_CHUNK} transactions per chunk)", fg="blue"))
+    
         # Process each chunk
         all_transactions = []
+        chunk_times = []
+        
         for i, chunk in enumerate(chunks):
             try:
-                print(f"Stage 2: Processing chunk {i+1}/{len(chunks)}")
-                result = chain.invoke({"cleaned_text": chunk})
+                chunk_start = time.time()
+                chunk_transaction_count = len(chunk.split('\n')) - 2
+                click.echo(click.style(f"  🔄 Processing chunk {i+1}/{len(chunks)} ({chunk_transaction_count} transactions)...", fg="blue"))
                 
+                result = chain.invoke({"text": chunk})
+            
                 # Parse and validate JSON response for this chunk
                 chunk_transactions = _parse_transaction_json(result.content)
-                validated_transactions = _validate_transactions(chunk_transactions)
+                validated_transactions = validate_transactions(chunk_transactions)
                 
                 all_transactions.extend(validated_transactions)
-                print(f"Stage 2: Chunk {i+1} converted {len(validated_transactions)} transactions")
+                
+                chunk_time = time.time() - chunk_start
+                chunk_times.append(chunk_time)
+                click.echo(click.style(f"  ✅ Chunk {i+1} completed in {chunk_time:.2f}s ({len(validated_transactions)} transactions)", fg="green"))
                 
             except Exception as chunk_error:
-                print(f"Stage 2: Chunk {i+1} failed: {str(chunk_error)}")
+                click.echo(click.style(f"  ❌ Chunk {i+1} failed: {str(chunk_error)}", fg="red"))
                 continue
         
-        print(f"Stage 2: Successfully processed {len(chunks)} chunks, total {len(all_transactions)} transactions")
+        total_time = time.time() - start_time
+        click.echo(click.style(f"  ✨ Optimized extraction completed in {total_time:.2f}s", fg="blue"))
+        click.echo(click.style(f"  📊 Total transactions extracted: {len(all_transactions)}", fg="blue"))
+        if chunk_times:
+            avg_chunk_time = sum(chunk_times) / len(chunk_times)
+            click.echo(click.style(f"  ⏱️  Avg chunk time: {avg_chunk_time:.2f}s", fg="blue"))
+        
         return all_transactions
         
     except Exception as e:
-        print(f"Stage 2 extraction failed: {str(e)}")
+        click.echo(click.style(f"  ❌ Optimized extraction failed: {str(e)}", fg="red"))
         return []
+
 
 def _parse_transaction_json(llm_response: str) -> List[Dict]:
     """
@@ -113,7 +124,7 @@ def _parse_transaction_json(llm_response: str) -> List[Dict]:
         if isinstance(transactions, list):
             return transactions
         else:
-            print(f"Expected list, got {type(transactions)}")
+            click.echo(click.style(f"  ⚠️  Expected list, got {type(transactions)}", fg="yellow"))
             return []
             
     except json.JSONDecodeError:
@@ -121,36 +132,29 @@ def _parse_transaction_json(llm_response: str) -> List[Dict]:
         json_patterns = [
             r'```json\s*(.*?)\s*```',  # ```json ... ```
             r'```\s*(.*?)\s*```',      # ``` ... ```
-            r'\[(.*?)\]'               # [ ... ] (simple array)
         ]
         
         for pattern in json_patterns:
             match = re.search(pattern, llm_response, re.DOTALL)
             if match:
                 try:
-                    json_text = match.group(1)
-                    if pattern == r'\[(.*?)\]':
-                        json_text = f"[{json_text}]"
-                    
+                    json_text = match.group(1).strip()
                     transactions = json.loads(json_text)
                     if isinstance(transactions, list):
+                        click.echo(click.style(f"  ✅ Successfully parsed JSON from {pattern}", fg="green"))
                         return transactions
-                except json.JSONDecodeError:
+                except json.JSONDecodeError as e:
+                    click.echo(click.style(f"  ⚠️  JSON decode error with pattern {pattern}: {e}", fg="yellow"))
                     continue
         
         # Log failure for debugging
-        print(f"Failed to parse JSON from LLM response:")
-        print(f"Response preview: {llm_response[:500]}...")
-        print(f"Full response length: {len(llm_response)} characters")
-        
-        # Try to save the full response for debugging
-        with open("debug_stage2_response.txt", "w") as f:
-            f.write(llm_response)
-        print("Full response saved to debug_stage2_response.txt")
+        click.echo(click.style(f"  ❌ Failed to parse JSON from LLM response", fg="red"))
+        click.echo(click.style(f"  📝 Response preview: {llm_response[:200]}...", fg="yellow"))
         
         return []
 
-def _validate_transactions(transactions: List[Dict]) -> List[Dict]:
+
+def validate_transactions(transactions: List[Dict]) -> List[Dict]:
     """
     Validate and clean transaction objects
     
@@ -161,34 +165,51 @@ def _validate_transactions(transactions: List[Dict]) -> List[Dict]:
         Validated transaction list
     """
     validated = []
-    required_fields = ["amount", "description", "transaction_type", "source", "timestamp", "category"]
+    required_fields = ["amount", "description", "merchant", "transaction_type", "source", "timestamp", "category"]
     
     for tx in transactions:
         try:
             # Check required fields
             if not all(field in tx for field in required_fields):
-                print(f"Skipping transaction missing required fields: {tx}")
+                click.echo(click.style(f"  ⚠️  Skipping transaction missing required fields", fg="yellow"))
                 continue
             
             # Validate amount
             if not isinstance(tx["amount"], (int, float)):
-                print(f"Skipping transaction with invalid amount: {tx}")
+                click.echo(click.style(f"  ⚠️  Skipping transaction with invalid amount", fg="yellow"))
                 continue
             
             # Validate transaction_type
             if tx["transaction_type"] not in ["income", "expense"]:
-                print(f"Skipping transaction with invalid type: {tx}")
+                click.echo(click.style(f"  ⚠️  Skipping transaction with invalid type", fg="yellow"))
                 continue
                 
             # Validate source
             if tx["source"] not in ["credit", "debit", "savings"]:
-                print(f"Skipping transaction with invalid source: {tx}")
+                click.echo(click.style(f"  ⚠️  Skipping transaction with invalid source", fg="yellow"))
                 continue
+            
+            # Validate timestamp format
+            if not re.match(r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}', tx["timestamp"]):
+                click.echo(click.style(f"  ⚠️  Skipping transaction with invalid timestamp format", fg="yellow"))
+                continue
+            
+            # Validate description length
+            if len(tx["description"]) > 100:
+                tx["description"] = tx["description"][:97] + "..."
+            
+            # Validate merchant length
+            if len(tx["merchant"]) > 50:
+                tx["merchant"] = tx["merchant"][:47] + "..."
+            
+            # Validate category length
+            if len(tx["category"]) > 20:
+                tx["category"] = tx["category"][:17] + "..."
             
             validated.append(tx)
             
         except Exception as e:
-            print(f"Error validating transaction {tx}: {e}")
+            click.echo(click.style(f"  ❌ Error validating transaction: {e}", fg="red"))
             continue
     
     return validated

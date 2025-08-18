@@ -9,10 +9,13 @@ SpendWise is a GenAI-powered personal finance assistant that helps you track, ca
 - User authentication (JWT)
 - Upload debit or credit bank statements as PDF
 - LLM extracts and categorizes transactions
-- Auto-generated financial insights
+
 - Accept LLM suggestions as budgets
 - Creates user spending profile
-- Provides insights and suggestions on budget spending compatibility of users
+
+- **Smart Budget Management**: Create budgets based on your transaction categories
+- **Budget Tracking**: Monitor spending against budgets with real-time summaries
+- **Budget Suggestions**: Get AI-powered budget recommendations based on spending patterns
 
 ---
 
