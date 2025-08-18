@@ -25,15 +25,16 @@ def test_process_pdf_creates_transactions(mock_llm, mock_pdf):
     
     # Step 2: Mock LLM transaction extraction
     mock_llm.return_value = [
-        {
-            "amount": -10.0,
-            "description": "Netflix Subscription",
-            "category": "Entertainment",
-            "transaction_type": "expense",
-            "source": "debit",
-            "timestamp": "2024-07-01T00:00:00"
-        }
-    ]
+            {
+                "amount": 10.0,
+                "description": "Netflix Subscription",
+                "merchant": "Netflix",
+                "category": "Entertainment",
+                "transaction_type": "expense",
+                "source": "debit",
+                "timestamp": "2024-07-01T00:00:00"
+            }
+        ]
 
     # Step 3: Register and login user
     client.post("/auth/register", json={"username": "testuser", "password": "Password123!", "name": "Test User"})
@@ -88,16 +89,18 @@ def test_llm_extracts_valid_transaction_dicts():
         # Mock the LLM to return realistic transaction data
         mock_llm.return_value = [
             {
-                "amount": -15.99,
+                "amount": 15.99,
                 "description": "Netflix Subscription",
+                "merchant": "Netflix",
                 "category": "Entertainment",
                 "transaction_type": "expense",
                 "source": "debit",
                 "timestamp": "2024-07-01T00:00:00"
             },
             {
-                "amount": -45.67,
+                "amount": 45.67,
                 "description": "Grocery Store Purchase",
+                "merchant": "Grocery Store",
                 "category": "Food",
                 "transaction_type": "expense",
                 "source": "debit",
@@ -106,6 +109,7 @@ def test_llm_extracts_valid_transaction_dicts():
             {
                 "amount": 2500.00,
                 "description": "Salary Deposit",
+                "merchant": "Employer",
                 "category": "Income",
                 "transaction_type": "income",
                 "source": "debit",
@@ -131,7 +135,7 @@ def test_llm_extracts_valid_transaction_dicts():
         
         # Check Netflix transaction
         netflix_tx = transactions[0]
-        assert netflix_tx["amount"] == -15.99  # Should be negative for expense
+        assert netflix_tx["amount"] == 15.99  # Should be positive for expense
         assert netflix_tx["transaction_type"] == "expense"
         assert netflix_tx["category"] == "Entertainment"
         assert netflix_tx["source"] == "debit"
@@ -166,23 +170,23 @@ def test_insert_transactions():
     
     # Valid transaction data
     valid_transactions = [
-        {
-            "amount": -10.0,
-            "description": "Test Transaction",
-            "category": "Entertainment",
-            "transaction_type": "expense",
-            "source": "debit",
-            "timestamp": "2024-07-01T00:00:00"
-        },
-        {
-            "amount": 50.0,
-            "description": "Salary",
-            "category": "Income",
-            "transaction_type": "income",
-            "source": "debit",
-            "timestamp": "2024-07-01T00:00:00"
-        }
-    ]
+            {
+                "amount": 10.0,
+                "description": "Test Transaction",
+                "category": "Entertainment",
+                "transaction_type": "expense",
+                "source": "debit",
+                "timestamp": "2024-07-01T00:00:00"
+            },
+            {
+                "amount": 50.0,
+                "description": "Salary",
+                "category": "Income",
+                "transaction_type": "income",
+                "source": "debit",
+                "timestamp": "2024-07-01T00:00:00"
+            }
+        ]
     
     # Test insertion
     result = insert_transactions(valid_transactions, mock_db, mock_user)
@@ -213,7 +217,7 @@ def test_insert_transactions_with_invalid_data():
     mixed_transactions = [
         {
             # Valid transaction
-            "amount": -10.0,
+            "amount": 10.0,
             "description": "Valid Transaction",
             "category": "Entertainment",
             "transaction_type": "expense",
@@ -246,40 +250,40 @@ def test_insert_transactions_with_invalid_data():
     assert mock_db.add.call_count == 2
     mock_db.commit.assert_called_once()
 
-# def test_full_functionality_process_uploaded_pdf():
-#     """
-#     End-to-end test of uploading a PDF and processing transactions
-#     """
-#     # Step 1: Register + login user
-#     username = "nazlidenizurenli123"
-#     client.post("/auth/register", json={
-#         "username": username, "password": "Password123!", "name": "verfiy data"
-#     })
-#     login_res = client.post("/auth/login", data={
-#         "username": username, "password": "Password123!"
-#     })
-#     token = login_res.json().get("access_token")
-#     assert token, f"Login failed: {login_res.json()}"
-#     headers = {"Authorization": f"Bearer {token}"}
+def test_full_functionality_process_uploaded_pdf():
+    """
+    End-to-end test of uploading a PDF and processing transactions
+    """
+    # Step 1: Register + login user
+    username = "final_test"
+    client.post("/auth/register", json={
+        "username": username, "password": "Lola890189?", "name": "test transaction"
+    })
+    login_res = client.post("/auth/login", data={
+        "username": username, "password": "Lola890189?"
+    })
+    token = login_res.json().get("access_token")
+    assert token, f"Login failed: {login_res.json()}"
+    headers = {"Authorization": f"Bearer {token}"}
 
-#     # Step 2: Upload CreditStatement
-#     with open("data/CreditStatement.pdf", "rb") as credit_pdf:
-#         files = {"file": ("credit.pdf", credit_pdf, "application/pdf")}
-#         res_credit = client.post("/process/pdf?model_provider=openai", files=files, headers=headers)
-#         print("Credit Response:", res_credit.json())
+    # Step 2: Upload CreditStatement
+    with open("data/CreditStatement.pdf", "rb") as credit_pdf:
+        files = {"file": ("credit.pdf", credit_pdf, "application/pdf")}
+        res_credit = client.post("/process/pdf?model_provider=openai", files=files, headers=headers)
+        print("Credit Response:", res_credit.json())
 
-#     # Step 3: Upload DebitStatement
-#     with open("data/DebitStatement.pdf", "rb") as debit_pdf:
-#         files = {"file": ("debit.pdf", debit_pdf, "application/pdf")}
-#         res_debit = client.post("/process/pdf?model_provider=openai", files=files, headers=headers)
-#         print("Debit Response:", res_debit.json())
+    # Step 3: Upload DebitStatement
+    with open("data/DebitStatement.pdf", "rb") as debit_pdf:
+        files = {"file": ("debit.pdf", debit_pdf, "application/pdf")}
+        res_debit = client.post("/process/pdf?model_provider=openai", files=files, headers=headers)
+        print("Debit Response:", res_debit.json())
 
-#     # Step 4: Assertions
-#     assert res_credit.status_code == 200
-#     assert isinstance(res_credit.json()["added"], int)
-#     assert res_credit.json()["added"] >= 1
+    # Step 4: Assertions
+    assert res_credit.status_code == 200
+    assert isinstance(res_credit.json()["added"], int)
+    assert res_credit.json()["added"] >= 1
 
-#     assert res_debit.status_code == 200
-#     assert isinstance(res_debit.json()["added"], int)
-#     assert res_debit.json()["added"] >= 1
+    assert res_debit.status_code == 200
+    assert isinstance(res_debit.json()["added"], int)
+    assert res_debit.json()["added"] >= 1
     

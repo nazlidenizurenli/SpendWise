@@ -34,6 +34,7 @@ class TestTransactionSubmit:
         mock_transaction = TransactionModel(
             amount=100.50,
             description="Salary payment",
+            merchant="Employer",
             category="salary",
             transaction_type="income",
             source="debit",
@@ -93,6 +94,7 @@ class TestTransactionSubmit:
         mock_transaction = TransactionModel(
             amount=75.99,
             description="Grocery shopping",
+            merchant="Grocery Store",
             category="food",
             transaction_type="expense",
             source="credit",
@@ -132,8 +134,8 @@ class TestTransactionSubmit:
         finally:
             app.dependency_overrides.clear()
 
-    def test_submit_transaction_success_expense_debit_negative(self):
-        """Test successful creation of expense transaction from debit with negative amount"""
+    def test_submit_transaction_success_expense_debit_positive(self):
+        """Test successful creation of expense transaction from debit with positive amount (non-negative system)"""
         mock_db = get_mock_db(user_exists=False)
         
         # Mock current user
@@ -147,8 +149,9 @@ class TestTransactionSubmit:
         
         # Mock created transaction
         mock_transaction = TransactionModel(
-            amount=-150.00,
+            amount=150.00,
             description="ATM withdrawal",
+            merchant="ATM",
             category="cash",
             transaction_type="expense",
             source="debit",
@@ -171,7 +174,7 @@ class TestTransactionSubmit:
                  patch("app.routes.transactions.crud_transaction.create_transaction_for_user", return_value=mock_transaction):
                 
                 response = client.post("/transactions/submit", json={
-                    "amount": -150.00,
+                    "amount": 150.00,
                     "description": "ATM withdrawal",
                     "category": "cash",
                     "transaction_type": "expense",
@@ -180,7 +183,7 @@ class TestTransactionSubmit:
                 
                 assert response.status_code == 200
                 response_data = response.json()
-                assert response_data["amount"] == -150.00
+                assert response_data["amount"] == 150.00
                 assert response_data["description"] == "ATM withdrawal"
                 assert response_data["transaction_type"] == "expense"
                 assert response_data["source"] == "debit"
@@ -249,6 +252,8 @@ class TestTransactionSubmit:
 
     def test_submit_transaction_business_logic_validation(self):
         """Test transaction submission with invalid business logic"""
+        mock_db = get_mock_db(user_exists=False)
+        
         # Mock current user
         mock_user = User(
             username="testuser",
@@ -258,6 +263,22 @@ class TestTransactionSubmit:
         mock_user.id = uuid.uuid4()
         mock_user.created_at = datetime.now()
         
+        # Mock created transaction
+        mock_transaction = TransactionModel(
+            amount=100.00,
+            description="Valid credit income",
+            merchant="Test Merchant",
+            category="test",
+            transaction_type="income",
+            source="credit",
+            timestamp=datetime.now(),
+            user_id=mock_user.id
+        )
+        mock_transaction.id = uuid.uuid4()
+        
+        def mock_get_db():
+            yield mock_db
+        
         # Override the get_current_user dependency
         def get_current_user_override():
             return mock_user
@@ -265,7 +286,7 @@ class TestTransactionSubmit:
         app.dependency_overrides[get_current_user] = get_current_user_override
         
         try:
-            # Test invalid credit transaction (negative amount)
+            # Test invalid credit transaction (negative amount - non-negative system)
             response = client.post("/transactions/submit", json={
                 "amount": -100.00,
                 "description": "Invalid credit transaction",
@@ -275,25 +296,29 @@ class TestTransactionSubmit:
             })
             assert response.status_code == 422  # Validation error
             
-            # Test invalid credit transaction (income type)
-            response = client.post("/transactions/submit", json={
-                "amount": 100.00,
-                "description": "Invalid credit income",
-                "category": "test",
-                "transaction_type": "income",
-                "source": "credit"
-            })
-            assert response.status_code == 422  # Validation error
+            # Test valid credit transaction (income type) - now valid in non-negative system
+            with patch("app.routes.transactions.get_db", side_effect=mock_get_db), \
+                 patch("app.routes.transactions.crud_transaction.create_transaction_for_user", return_value=mock_transaction):
+                response = client.post("/transactions/submit", json={
+                    "amount": 100.00,
+                    "description": "Valid credit income",
+                    "category": "test",
+                    "transaction_type": "income",
+                    "source": "credit"
+                })
+                assert response.status_code == 200  # Now valid
             
-            # Test invalid debit transaction (positive amount with expense)
-            response = client.post("/transactions/submit", json={
-                "amount": 100.00,
-                "description": "Invalid debit expense",
-                "category": "test",
-                "transaction_type": "expense",
-                "source": "debit"
-            })
-            assert response.status_code == 422  # Validation error
+            # Test valid debit transaction (positive amount with expense) - now valid in non-negative system
+            with patch("app.routes.transactions.get_db", side_effect=mock_get_db), \
+                 patch("app.routes.transactions.crud_transaction.create_transaction_for_user", return_value=mock_transaction):
+                response = client.post("/transactions/submit", json={
+                    "amount": 100.00,
+                    "description": "Valid debit expense",
+                    "category": "test",
+                    "transaction_type": "expense",
+                    "source": "debit"
+                })
+                assert response.status_code == 200  # Now valid
         finally:
             app.dependency_overrides.clear()
 
@@ -388,6 +413,7 @@ class TestTransactionGetAll:
                 user_id=mock_user.id,
                 amount=100.50,
                 description="Salary payment",
+                merchant="Employer",
                 category="salary",
                 transaction_type="income",
                 source="debit",
@@ -398,6 +424,7 @@ class TestTransactionGetAll:
                 user_id=mock_user.id,
                 amount=50.25,
                 description="Grocery shopping",
+                merchant="Grocery Store",
                 category="food",
                 transaction_type="expense",
                 source="credit",
@@ -406,8 +433,9 @@ class TestTransactionGetAll:
             TransactionModel(
                 id=uuid.uuid4(),
                 user_id=mock_user.id,
-                amount=-75.00,
+                amount=75.00,
                 description="ATM withdrawal",
+                merchant="ATM",
                 category="cash",
                 transaction_type="expense",
                 source="debit",
@@ -449,7 +477,7 @@ class TestTransactionGetAll:
                 assert response_data[1]["source"] == "credit"
                 
                 # Check third transaction
-                assert response_data[2]["amount"] == -75.00
+                assert response_data[2]["amount"] == 75.00
                 assert response_data[2]["description"] == "ATM withdrawal"
                 assert response_data[2]["transaction_type"] == "expense"
                 assert response_data[2]["source"] == "debit"
@@ -516,6 +544,7 @@ class TestTransactionGetAll:
                 user_id=mock_user.id,  # Same user ID
                 amount=100.00,
                 description="User's transaction",
+                merchant="Test Merchant",
                 category="test",
                 transaction_type="income",
                 source="debit",
@@ -572,6 +601,7 @@ class TestTransactionEndpointsIntegration:
             user_id=mock_user.id,
             amount=100.50,
             description="Salary payment",
+            merchant="Employer",
             category="salary",
             transaction_type="income",
             source="debit",
@@ -671,6 +701,7 @@ class TestTransactionEndpointsIntegration:
                 user_id=user1.id,
                 amount=100.00,
                 description="User 1 transaction",
+                merchant="Test Merchant",
                 category="test",
                 transaction_type="income",
                 source="debit",
@@ -685,12 +716,13 @@ class TestTransactionEndpointsIntegration:
                 user_id=user2.id,
                 amount=200.00,
                 description="User 2 transaction",
+                merchant="Test Merchant",
                 category="test",
                 transaction_type="income",
                 source="debit",
                 timestamp=datetime.now()
-            )
-        ]
+                )
+            ]
         
         def mock_get_db():
             yield mock_db

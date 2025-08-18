@@ -21,6 +21,7 @@ def test_create_transaction(db_session):
         user_id=user.id,
         amount=100.00,
         description="Test Transaction",
+        merchant="Test Merchant",
         category="Food",
         transaction_type="expense",
         source="debit",
@@ -36,6 +37,7 @@ def test_create_transaction(db_session):
     assert transaction.user_id == user.id
     assert transaction.amount == 100.00
     assert transaction.description == "Test Transaction"
+    assert transaction.merchant == "Test Merchant"
     assert transaction.category == "Food"
     assert transaction.transaction_type == "expense"
     assert transaction.source == "debit"
@@ -55,6 +57,7 @@ def test_transaction_foreign_key_constraint(db_session):
         user_id=uuid.uuid4(),  # Random UUID that doesn't exist
         amount=100.00,
         description="Test Transaction",
+        merchant="Test Merchant",
         category="Food",
         transaction_type="expense",
         source="debit",
@@ -90,6 +93,7 @@ def test_transaction_required_fields(db_session):
         id=uuid.uuid4(),
         user_id=user.id,
         description="Test Transaction",
+        merchant="Test Merchant",
         category="Food",
         transaction_type="expense",
         source="debit",
@@ -105,6 +109,7 @@ def test_transaction_required_fields(db_session):
         id=uuid.uuid4(),
         user_id=user.id,
         amount=100.00,
+        merchant="Test Merchant",
         category="Food",
         transaction_type="expense",
         source="debit",
@@ -121,6 +126,7 @@ def test_transaction_required_fields(db_session):
         user_id=user.id,
         amount=100.00,
         description="Test Transaction",
+        merchant="Test Merchant",
         transaction_type="expense",
         source="debit",
         timestamp=datetime.now()
@@ -136,6 +142,7 @@ def test_transaction_required_fields(db_session):
         user_id=user.id,
         amount=100.00,
         description="Test Transaction",
+        merchant="Test Merchant",
         category="Food",
         source="debit",
         timestamp=datetime.now()
@@ -151,6 +158,7 @@ def test_transaction_required_fields(db_session):
         user_id=user.id,
         amount=100.00,
         description="Test Transaction",
+        merchant="Test Merchant",
         category="Food",
         transaction_type="expense",
         timestamp=datetime.now()
@@ -166,6 +174,7 @@ def test_transaction_required_fields(db_session):
         user_id=user.id,
         amount=100.00,
         description="Test Transaction",
+        merchant="Test Merchant",
         category="Food",
         transaction_type="expense",
         source="debit"
@@ -190,6 +199,7 @@ def test_transaction_cascade_delete(db_session):
         user_id=user.id,
         amount=100.00,
         description="Test Transaction",
+        merchant="Test Merchant",
         category="Food",
         transaction_type="expense",
         source="debit",
@@ -225,6 +235,7 @@ def test_transaction_different_types_and_sources(db_session):
         user_id=user.id,
         amount=1000.00,
         description="Salary",
+        merchant="Employer",
         category="Income",
         transaction_type="income",
         source="debit",
@@ -239,6 +250,7 @@ def test_transaction_different_types_and_sources(db_session):
         user_id=user.id,
         amount=-50.00,
         description="Groceries",
+        merchant="Grocery Store",
         category="Food",
         transaction_type="expense",
         source="credit",
@@ -253,6 +265,7 @@ def test_transaction_different_types_and_sources(db_session):
         user_id=user.id,
         amount=200.00,
         description="Savings deposit",
+        merchant="Bank",
         category="Savings",
         transaction_type="income",
         source="savings",
@@ -285,6 +298,7 @@ def test_transaction_negative_amounts(db_session):
         user_id=user.id,
         amount=-75.50,
         description="Restaurant bill",
+        merchant="Restaurant",
         category="Dining",
         transaction_type="expense",
         source="debit",

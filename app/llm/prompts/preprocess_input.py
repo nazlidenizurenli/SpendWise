@@ -38,10 +38,8 @@ REMOVE:
 - Blank page indicators ("This Page Intentionally Left Blank")
 
 PRESERVE:
-- All transaction data. These are date with date, amounts, and merchant names
+- All transaction data. Include date information, amount information, and merchant names.
 - Transaction descriptions and details
-- Provide information about account type and source but this should be inferred and briefly mentioned.
-- Any text that contains financial transaction information
 
 EXAMPLE OF WHAT TO REMOVE:
 "If you think there is an error on your statement, write to us on a separate sheet..."
@@ -49,8 +47,10 @@ EXAMPLE OF WHAT TO REMOVE:
 "For errors involving new accounts, point-of-sale, or foreign-initiated transactions..."
 
 EXAMPLE OF WHAT TO KEEP:
+Date, amount, merchant name, all information that is related to the transaction.
+
 "06/23 STARBUCKS STORE 63247 SAN JOSE CA 5.65"
-"Payment Thank You-Mobile -2,000.00"
+"06/23 Payment Thank You-Mobile -2,000.00"
 
 OUTPUT: Return only the cleaned text with transaction-relevant content.
 
