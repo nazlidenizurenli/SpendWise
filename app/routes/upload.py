@@ -24,6 +24,7 @@ def process_uploaded_pdf(
     click.echo(click.style("Step 1: Extracting text from PDF...", fg="yellow"))
     start_time = time.time()
     extracted_text = extract_text_from_pdf(file)
+    # Write the extracted text to a file
     text_extraction_time = time.time() - start_time
     click.echo(click.style(f"✅ Text extraction completed in {text_extraction_time:.2f}s", fg="green", bold=True))
     click.echo(click.style(f"   Extracted {len(extracted_text)} characters", fg="blue"))

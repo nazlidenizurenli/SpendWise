@@ -56,23 +56,6 @@ async def get_user_budget_overview(
     return budget_service.get_user_budget_overview(current_user.id)
 
 
-@router.get("/suggestions", response_model=List[BudgetCreate])
-async def get_suggested_budgets(
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    """Get suggested budgets based on user's spending patterns"""
-    budget_service = BudgetService(db)
-    
-    # Check if user has transactions
-    if not budget_service.can_user_create_budget(current_user.id):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="No transactions found. Upload some transactions first to get budget suggestions."
-        )
-    
-    return budget_service.get_suggested_budgets(current_user.id)
-
 
 @router.post("/", response_model=BudgetResponse)
 async def create_budget(

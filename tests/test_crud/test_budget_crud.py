@@ -464,60 +464,6 @@ class TestBudgetCRUD:
         )
         assert income_spending == 0.0
 
-    def test_suggested_budgets_with_zero_spending(self, db_session):
-        """Test that suggested budgets handle categories with zero spending correctly"""
-        from app.services.budget import BudgetService
-        from app.models.transaction import TransactionModel
-        from datetime import datetime
-        
-        # Create user
-        user = User(
-            id=uuid4(),
-            username="testuser",
-            name="Test User",
-            hashed_password="hashed_password"
-        )
-        db_session.add(user)
-        db_session.commit()
-        
-        # Create transactions: one with spending, one with only income
-        transactions = [
-            # Category with spending
-            TransactionModel(
-                user_id=user.id,
-                amount=50.0,  # Debit expense (non-negative system)
-                description="Food purchase",
-                merchant="Grocery Store",
-                category="Food",
-                transaction_type="expense",
-                source="debit",
-                timestamp=datetime.now()
-            ),
-            # Category with only income (should be excluded from suggestions)
-            TransactionModel(
-                user_id=user.id,
-                amount=200.0,  # Debit income
-                description="Salary",
-                merchant="Employer",
-                category="Income",
-                transaction_type="income",
-                source="debit",
-                timestamp=datetime.now()
-            )
-        ]
-        
-        for transaction in transactions:
-            db_session.add(transaction)
-        db_session.commit()
-        
-        # Test suggested budgets
-        budget_service = BudgetService(db_session)
-        suggestions = budget_service.get_suggested_budgets(user.id)
-        
-        # Should only suggest budget for Food category (not Income)
-        assert len(suggestions) == 1
-        assert suggestions[0].category == "Food"
-        assert suggestions[0].limit >= 10.0  # Should have minimum budget amount
 
     def test_budget_status_management(self, db_session):
         """Test budget status management based on date ranges"""
@@ -554,14 +500,15 @@ class TestBudgetCRUD:
         
         # Create budgets with different date ranges
         now = datetime.now()
-        past_start = now - timedelta(days=30)
-        past_end = now - timedelta(days=1)
+        # Past budget that ended more than 60 days ago (should be inactive)
+        past_start = now - timedelta(days=90)
+        past_end = now - timedelta(days=65)  # More than 60 days ago
         future_start = now + timedelta(days=1)
         future_end = now + timedelta(days=30)
         current_start = now - timedelta(days=15)
         current_end = now + timedelta(days=15)
         
-        # Create past budget (should be inactive)
+        # Create past budget (should be inactive - outside 60-day grace period)
         past_budget = BudgetModel(
             user_id=user.id,
             limit=100.0,
@@ -573,7 +520,7 @@ class TestBudgetCRUD:
         )
         db_session.add(past_budget)
         
-        # Create future budget (should be inactive)
+        # Create future budget (should be inactive - hasn't started yet)
         future_budget = BudgetModel(
             user_id=user.id,
             limit=100.0,
@@ -585,7 +532,7 @@ class TestBudgetCRUD:
         )
         db_session.add(future_budget)
         
-        # Create current budget (should be active)
+        # Create current budget (should be active - within period)
         current_budget = BudgetModel(
             user_id=user.id,
             limit=100.0,

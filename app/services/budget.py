@@ -1,7 +1,8 @@
 from sqlalchemy.orm import Session
 from uuid import UUID
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import List, Optional
+
 from app.crud.budget import (
     get_user_categories,
     get_budgets_by_user,
@@ -29,13 +30,15 @@ class BudgetService:
         self.db = db
 
     def update_budget_status(self, budget_id: UUID) -> bool:
-        """Update budget status based on current date and start/end dates"""
+        """Update budget status based on current date and start/end dates with 60-day grace period"""
         budget = get_budget_by_id(self.db, budget_id)
         if not budget:
             return False
         
         current_date = datetime.now()
-        should_be_active = budget.start_date <= current_date <= budget.end_date
+        # Budget is active if current date is within budget period OR within 60 days after end date
+        grace_period_end = budget.end_date + timedelta(days=60)
+        should_be_active = budget.start_date <= current_date <= grace_period_end
         
         # Only update if status needs to change
         if budget.is_active != should_be_active:
@@ -46,7 +49,7 @@ class BudgetService:
         return False
 
     def update_all_budget_statuses(self) -> int:
-        """Update status of all budgets based on current date"""
+        """Update status of all budgets based on current date with 60-day grace period"""
         from app.models.budget import BudgetModel
         
         current_date = datetime.now()
@@ -56,7 +59,9 @@ class BudgetService:
         all_budgets = self.db.query(BudgetModel).all()
         
         for budget in all_budgets:
-            should_be_active = budget.start_date <= current_date <= budget.end_date
+            # Budget is active if current date is within budget period OR within 60 days after end date
+            grace_period_end = budget.end_date + timedelta(days=60)
+            should_be_active = budget.start_date <= current_date <= grace_period_end
             
             # Only update if status needs to change
             if budget.is_active != should_be_active:
@@ -169,36 +174,3 @@ class BudgetService:
         
         return delete_budget(self.db, budget_id)
 
-    def get_suggested_budgets(self, user_id: UUID) -> List[BudgetCreate]:
-        """Generate suggested budgets based on user's spending patterns"""
-        categories = self.get_user_categories(user_id)
-        suggestions = []
-        
-        for category in categories:
-            # Only suggest budgets for categories with actual spending
-            if category.total_amount <= 0:
-                continue
-                
-            # Suggest budget based on average monthly spending
-            # Multiply by 1.2 to give some buffer
-            suggested_limit = category.average_amount * 1.2
-            
-            # Ensure minimum budget amount (at least $10)
-            if suggested_limit < 10.0:
-                suggested_limit = 10.0
-            
-            # Create a monthly budget suggestion
-            start_date = datetime.now().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-            end_date = start_date.replace(month=start_date.month + 1) if start_date.month < 12 else start_date.replace(year=start_date.year + 1, month=1)
-            
-            suggestion = BudgetCreate(
-                limit=suggested_limit,
-                category=category.category,
-                description=f"Suggested budget for {category.category} based on your spending patterns",
-                start_date=start_date,
-                end_date=end_date,
-                is_active=True
-            )
-            suggestions.append(suggestion)
-        
-        return suggestions
