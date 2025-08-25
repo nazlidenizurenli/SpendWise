@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routes import auth, root, transactions, upload, budget
+from app.routes import auth, root, transactions, upload, budget, leaderboards, insights
 from app.services.background_tasks import start_budget_status_manager, stop_budget_status_manager
 
 app = FastAPI(title="SpendWise API", version="1.0.0")
@@ -20,6 +20,8 @@ app.include_router(auth.router)
 app.include_router(transactions.router)
 app.include_router(upload.router)
 app.include_router(budget.router)
+app.include_router(leaderboards.router)
+app.include_router(insights.router)
 
 
 

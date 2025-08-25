@@ -8,7 +8,7 @@ from app.llm.llm_config import get_preprocessing_llm
 from app.llm.prompts.preprocess_input import preprocess_input_prompt
 
 
-def run_chain_clean_text(raw_text: str, model_provider: str = None) -> str:
+def run_chain_clean_text(raw_text: str, model_provider: str = "openai") -> str:
     """
     Stage 0: Clean raw PDF text by removing legal disclaimers, headers, and metadata
     

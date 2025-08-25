@@ -3,6 +3,7 @@ from jose import JWTError, jwt
 import os
 from datetime import datetime, timedelta
 from typing import Optional
+from uuid import UUID
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
@@ -49,3 +50,11 @@ def get_current_user(db: Session = Depends(get_db), token: str = Depends(oauth2_
         raise credentials_exception
 
     return user
+
+
+def get_current_user_id(current_user: User = Depends(get_current_user)) -> UUID:
+    """
+    Dependency that returns just the current user's ID.
+    Useful for endpoints that only need the user ID, not the full user object.
+    """
+    return current_user.id

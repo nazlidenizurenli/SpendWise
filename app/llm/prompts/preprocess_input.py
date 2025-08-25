@@ -19,7 +19,7 @@ Look for indicators such as:
 - "Savings" → SAVINGS
 
 Write the account type in the output as first line.
-ACCOUNT_TYPE = [CREDIT_CARD or DEBIT_CHECKING or SAVINGS]
+ACCOUNT_TYPE = [CREDIT_CARD or DEBIT_CHECKING]
 
 STEP 2 - CLEAN TEXT:
 REMOVE:

@@ -23,6 +23,8 @@ def call_llm_to_extract_transactions(
     click.echo(click.style("Cleaning raw text...", fg="yellow"))
     start_time = time.time()
     cleaned_lines = run_chain_clean_text(raw_text, model_provider=model_provider)
+    with open("cleaned_lines.txt", "w") as f:
+        f.write(cleaned_lines)
     stage0_time = time.time() - start_time
     click.echo(click.style(f"✅ Cleaned input data in {stage0_time:.2f}s", fg="green", bold=True))
     
